@@ -17,7 +17,7 @@ export default function PropertyDetail() {
   useEffect(() => {
     const fetchHostel = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/hostels/${id}`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://final-project-za5c.onrender.com/api'}/hostels/${id}`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         })
         if (!res.ok) throw new Error('Failed to fetch hostel')
