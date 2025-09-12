@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+
+/* Custom base styles */
+html, body, #root {
+  height: 100%;
+}
+
+.container-page {
+  @apply min-h-screen flex flex-col bg-white text-black;
+}
