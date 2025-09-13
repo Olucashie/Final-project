@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -12,7 +12,6 @@ import AddHostel from './pages/AddHostel'
 
 function App() {
   return (
-    <BrowserRouter>
       <div className="container-page">
         <Navbar />
         <main className="flex-1">
@@ -32,7 +31,6 @@ function App() {
         </main>
         <Footer />
       </div>
-    </BrowserRouter>
   )
 }
 
