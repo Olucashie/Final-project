@@ -1,4 +1,4 @@
-export const API_BASE =  'https://final-project-za5c.onrender.com/api'
+export const API_BASE =  'https://final-project-1-zwia.onrender.com/api'
 
 export function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {}

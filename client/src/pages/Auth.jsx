@@ -56,7 +56,7 @@ export default function AuthPage() {
     setError('')
     setVerificationLoading(true)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://final-project-za5c.onrender.com/api'}/auth/verify-email`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://final-project-1-zwia.onrender.com/api'}/auth/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, verificationCode })
@@ -79,7 +79,7 @@ export default function AuthPage() {
   const onResendCode = async () => {
     setError('')
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://final-project-za5c.onrender.com/api'}/auth/resend-verification`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://final-project-1-zwia.onrender.com/api'}/auth/resend-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
