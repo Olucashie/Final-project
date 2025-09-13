@@ -28,33 +28,6 @@ exports.create = async (req, res) => {
 	const cloudinary = require('../config/cloudinary');
 	try {
 		if (!['agent', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Forbidden' });
-		
-		const { contactPhone, contactWhatsapp, contactTelegram, verificationDocuments } = req.body;
-		
-		// Validate contact information
-		if (contactPhone) {
-			const phoneValidation = validatePhoneNumber(contactPhone);
-			if (!phoneValidation.valid) return res.status(400).json({ message: phoneValidation.error });
-		}
-		
-		if (contactWhatsapp) {
-			const whatsappValidation = validateWhatsAppNumber(contactWhatsapp);
-			if (!whatsappValidation.valid) return res.status(400).json({ message: whatsappValidation.error });
-		}
-		
-		if (contactTelegram) {
-			const telegramValidation = validateTelegramUsername(contactTelegram);
-			if (!telegramValidation.valid) return res.status(400).json({ message: telegramValidation.error });
-		}
-		
-		// Validate verification documents if provided
-		if (verificationDocuments && Array.isArray(verificationDocuments)) {
-			for (const docUrl of verificationDocuments) {
-				const docValidation = await validateHostelDocUrl(docUrl);
-				if (!docValidation.valid) return res.status(400).json({ message: `Invalid document URL: ${docValidation.error}` });
-			}
-		}
-		
 		let imageUrl = '';
 		let documentUrl = '';
 		if (req.files?.images?.[0]) {
@@ -79,23 +52,16 @@ exports.create = async (req, res) => {
 				docRes.on('error', reject);
 			});
 		}
-		
 		const payload = {
 			...req.body,
 			owner: req.user.id,
 			images: imageUrl ? [imageUrl] : [],
-			verificationDocuments: documentUrl ? [documentUrl] : (verificationDocuments || []),
-			contactPhone: contactPhone || '',
-			contactWhatsapp: contactWhatsapp || '',
-			contactTelegram: contactTelegram || '',
-			isVerified: false // New hostels need verification
+			document: documentUrl || '',
 		};
-		
 		const hostel = await Hostel.create(payload);
-		const populated = await hostel.populate('owner', 'name phone whatsapp telegram');
+		const populated = await hostel.populate('owner', 'name');
 		res.status(201).json(populated);
 	} catch (err) {
-		console.error('Create hostel error:', err);
 		res.status(400).json({ message: 'Failed to create hostel' });
 	}
 };

@@ -73,7 +73,7 @@ export default function PropertyDetail() {
           <section className="lg:col-span-2 space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-black mb-2">{hostel.title}</h1>
-              <p className="text-2xl font-semibold text-green-600 mb-2">₦{hostel.price?.toLocaleString()} / year</p>
+              <p className="text-2xl font-semibold text-green-600 mb-2">₦{hostel.price?.toLocaleString()} / month</p>
               <p className="text-black/70 text-lg">{hostel.description}</p>
             </div>
 

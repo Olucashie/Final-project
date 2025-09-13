@@ -27,10 +27,26 @@ export async function getHostel(token, id) {
   return res.json()
 }
 
-export async function createHostel(payload, token) {
-  const res = await fetch(`${API_BASE}/hostels`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders(token) }, body: JSON.stringify(payload) })
-  if (!res.ok) throw new Error('Failed to create hostel')
-  return res.json()
+export async function createHostel(data, token) {
+  try {
+    let options = { method: 'POST' };
+    if (data instanceof FormData) {
+      options.body = data;
+      options.headers = { ...authHeaders(token) };
+    } else {
+      options.body = JSON.stringify(data);
+      options.headers = { 'Content-Type': 'application/json', ...authHeaders(token) };
+    }
+    const res = await fetch(`${API_BASE}/hostels`, options);
+    if (!res.ok) {
+      const errorMessage = await res.text();
+      throw new Error(`API error ${res.status}: ${errorMessage}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('createHostel failed:', err);
+    throw err;
+  }
 }
 
 // Favorites
