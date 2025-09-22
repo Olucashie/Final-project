@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
@@ -13,6 +14,9 @@ app.use(morgan('dev'));
 app.get('/health', (req, res) => {
 	res.json({ status: 'ok' });
 });
+
+// Serve uploaded files when Cloudinary isn't used
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/hostels', require('./routes/hostelRoutes'));

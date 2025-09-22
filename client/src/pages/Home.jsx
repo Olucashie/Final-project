@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Home() {
   const navigate = useNavigate()
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -15,7 +15,7 @@ export default function Home() {
     const run = async () => {
       try {
         setLoading(true)
-        const data = await listHostels(token)
+        const data = await listHostels(token, user?.role === 'agent' ? { mine: 'true' } : {})
         if (!active) return
         setItems((data || []).slice(0, 6))
       } finally {
@@ -24,7 +24,7 @@ export default function Home() {
     }
     run()
     return () => { active = false }
-  }, [token])
+  }, [token, user?.role])
 
   const handleSearch = (e) => {
     e.preventDefault()

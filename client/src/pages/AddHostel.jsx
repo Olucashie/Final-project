@@ -35,20 +35,24 @@ export default function AddHostel() {
     //   return
     // }
     try {
-      // Build plain JS object for hostel creation
-      const payload = {
-        title: form.title,
-        description: form.description,
-        price: form.price,
-        location: form.location,
-        school: form.school,
-        area: form.area,
-        bedrooms: form.bedrooms,
-        bathrooms: form.bathrooms,
-        amenities: form.amenities,
-        images: typeof form.images === 'string' ? [form.images] : [],
+      // Submit as multipart/form-data to support image upload
+      const fd = new FormData()
+      fd.append('title', form.title)
+      fd.append('description', form.description)
+      fd.append('price', String(form.price))
+      if (form.location) fd.append('location', form.location)
+      fd.append('school', form.school)
+      fd.append('area', form.area)
+      fd.append('bedrooms', String(form.bedrooms))
+      fd.append('bathrooms', String(form.bathrooms))
+      if (form.amenities) {
+        const list = String(form.amenities).split(',').map(s => s.trim()).filter(Boolean)
+        for (const a of list) fd.append('amenities', a)
       }
-      await createHostel(payload, token)
+      if (form.images instanceof File) {
+        fd.append('images', form.images)
+      }
+      await createHostel(fd, token)
       navigate('/listings')
     } catch (err) {
       setError('Failed to create hostel')
@@ -67,11 +71,11 @@ export default function AddHostel() {
           <input name="price" value={form.price} onChange={onChange} type="number" className="border border-black/10 rounded-md px-3 py-2" placeholder="Price per month" required />
           <input name="school" value={form.school} onChange={onChange} className="border border-black/10 rounded-md px-3 py-2" placeholder="School" required />
           <input name="area" value={form.area} onChange={onChange} className="border border-black/10 rounded-md px-3 py-2" placeholder="Area" required />
-          <input name="location" value={form.location} onChange={onChange} className="border border-black/10 rounded-md px-3 py-2" placeholder="Nearby landmark" required />
+          <input name="location" value={form.location} onChange={onChange} className="border border-black/10 rounded-md px-3 py-2" placeholder="Nearby landmark" />
           <input name="bedrooms" value={form.bedrooms} onChange={onChange} type="number" className="border border-black/10 rounded-md px-3 py-2" placeholder="Beds" required />
           <input name="bathrooms" value={form.bathrooms} onChange={onChange} type="number" className="border border-black/10 rounded-md px-3 py-2" placeholder="Bathrooms" required />
           <input name="amenities" value={form.amenities} onChange={onChange} className="md:col-span-2 border border-black/10 rounded-md px-3 py-2" placeholder="Amenities (comma separated)" />
-          <textarea name="description" value={form.description} onChange={onChange} className="md:col-span-2 border border-black/10 rounded-md px-3 py-2" rows="4" placeholder="Description" />
+          <textarea name="description" value={form.description} onChange={onChange} className="md:col-span-2 border border-black/10 rounded-md px-3 py-2" rows="4" placeholder="Description" required />
           <input name="images" type="file" accept="image/*" onChange={onChange} className="md:col-span-2 border border-black/10 rounded-md px-3 py-2" required />
           {/* <input name="document" type="file" accept="application/pdf,image/*" onChange={onChange} className="md:col-span-2 border border-black/10 rounded-md px-3 py-2" required /> */}
           <div className="md:col-span-2 flex items-center justify-end gap-3">
