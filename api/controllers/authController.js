@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const { generateVerificationCode, sendWelcomeEmail } = require('../services/emailService');
-const sendVerificationEmail = require('../utils/sendVerificationEmail');
+// Email verification removed
 const { validateCacUrl, validateHostelDocUrl, validatePhoneNumber, validateWhatsAppNumber, validateTelegramUsername } = require('../services/validationService');
 
 const signToken = (user) => {
@@ -11,6 +10,9 @@ const signToken = (user) => {
 	return jwt.sign({ id: user._id, role: user.role }, secret, { expiresIn });
 };
 
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
 exports.register = async (req, res) => {
 	try {
 		const { name, email, password, role, phone, cacUrl, hostelDocUrl, whatsapp, telegram } = req.body;
@@ -18,52 +20,92 @@ exports.register = async (req, res) => {
 		if (role && !['student','agent','admin'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
 		const existing = await User.findOne({ email });
 		if (existing) return res.status(409).json({ message: 'Email already in use' });
-		
-		// Generate verification code
-		const verificationCode = generateVerificationCode();
-		const verificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-		
+
+		// Admin registration guard: allow only a single admin and only with configured email
+		let desiredRole = role || 'student';
+		if (desiredRole === 'admin') {
+			const allowedAdminEmail = process.env.ADMIN_EMAIL && String(process.env.ADMIN_EMAIL).toLowerCase();
+			if (!allowedAdminEmail) return res.status(403).json({ message: 'Admin registration disabled' });
+			if (String(email).toLowerCase() !== allowedAdminEmail) return res.status(403).json({ message: 'Not allowed to register as admin' });
+			const existingAdmin = await User.findOne({ role: 'admin' });
+			if (existingAdmin) return res.status(403).json({ message: 'Admin already exists' });
+		}
+
+		// For student/agent, generate verification code
+		let emailVerificationCode, emailVerificationExpires, isEmailVerified = false;
+		if (desiredRole === 'student' || desiredRole === 'agent') {
+			emailVerificationCode = crypto.randomInt(100000, 999999).toString();
+			emailVerificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+		} else {
+			isEmailVerified = true;
+		}
+
 		const payload = { 
 			name, 
 			email, 
 			password, 
-			role: role || 'student',
-			emailVerificationCode: verificationCode,
-			emailVerificationExpires: verificationExpires
+			role: desiredRole,
+			isEmailVerified,
+			emailVerificationCode,
+			emailVerificationExpires
 		};
-		
+
 		if (payload.role === 'agent') {
 			if (!phone) return res.status(400).json({ message: 'Agent requires phone number' });
-			
+
 			// Validate phone number
 			const phoneValidation = validatePhoneNumber(phone);
 			if (!phoneValidation.valid) return res.status(400).json({ message: phoneValidation.error });
-			
+
 			// Validate optional contact fields
 			if (whatsapp) {
 				const whatsappValidation = validateWhatsAppNumber(whatsapp);
 				if (!whatsappValidation.valid) return res.status(400).json({ message: whatsappValidation.error });
 			}
-			
+
 			if (telegram) {
 				const telegramValidation = validateTelegramUsername(telegram);
 				if (!telegramValidation.valid) return res.status(400).json({ message: telegramValidation.error });
 			}
-			
+
 			payload.phone = phone; 
 			payload.cacUrl = ''; // No longer required
 			payload.hostelDocUrl = ''; // No longer required
 			if (whatsapp) payload.whatsapp = whatsapp;
 			if (telegram) payload.telegram = telegram;
 		}
-		
+
 		const user = await User.create(payload);
-		
-	// Send verification email
-	await sendVerificationEmail(email, verificationCode);
-		
+
+		// Send verification email for student/agent
+		if (desiredRole === 'student' || desiredRole === 'agent') {
+			// Use nodemailer directly for now
+			const transporter = nodemailer.createTransport({
+				service: 'gmail',
+				auth: {
+					user: process.env.EMAIL || process.env.EMAIL_USER,
+					pass: process.env.PASSWORD || process.env.EMAIL_PASS
+				}
+			});
+			await transporter.sendMail({
+				from: `"Hostel Finder" <${process.env.EMAIL || process.env.EMAIL_USER}>`,
+				to: email,
+				subject: 'Verify your email',
+				html: `<div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9;">
+				  <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+					<h2 style="color: #333333;">Email Verification Code</h2>
+					<p style="color: #555555; font-size: 16px;">
+					  Hello ${name},<br><br>
+					  Your verification code is: <strong style="font-size: 24px;">${emailVerificationCode}</strong><br><br>
+					  This code will expire in 10 minutes.
+					</p>
+				  </div>
+				</div>`
+			});
+		}
+
 		res.status(201).json({ 
-			message: 'Registration successful. Please check your email for verification code.',
+			message: desiredRole === 'admin' ? 'Registration successful.' : 'Registration successful. Please check your email for verification code.',
 			user: { 
 				id: user._id, 
 				name: user.name, 
@@ -89,15 +131,12 @@ exports.login = async (req, res) => {
 		if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 		const matched = await user.comparePassword(password);
 		if (!matched) return res.status(401).json({ message: 'Invalid credentials' });
-		
-		// Check if email is verified
-		if (!user.isEmailVerified) {
-			return res.status(401).json({ 
-				message: 'Please verify your email before logging in. Check your email for verification code.',
-				needsVerification: true 
-			});
+
+		// Prevent login for student/agent unless verified
+		if ((user.role === 'student' || user.role === 'agent') && !user.isEmailVerified) {
+			return res.status(401).json({ message: 'Please verify your email before logging in.', needsVerification: true });
 		}
-		
+
 		const token = signToken(user);
 		res.json({ 
 			user: { 
@@ -119,92 +158,27 @@ exports.login = async (req, res) => {
 		res.status(500).json({ message: 'Login failed' });
 	}
 };
-
-// Verify email with code
+// Verify email endpoint
 exports.verifyEmail = async (req, res) => {
 	try {
-		const { email, verificationCode } = req.body;
-		if (!email || !verificationCode) return res.status(400).json({ message: 'Email and verification code are required' });
-		
+		const { email, code } = req.body;
+		if (!email || !code) return res.status(400).json({ message: 'Email and code are required' });
 		const user = await User.findOne({ email });
 		if (!user) return res.status(404).json({ message: 'User not found' });
-		
-		// Check if already verified
-		if (user.isEmailVerified) {
-			return res.status(400).json({ message: 'Email already verified' });
-		}
-		
-		// Check verification code and expiration
-		if (user.emailVerificationCode !== verificationCode) {
-			return res.status(400).json({ message: 'Invalid verification code' });
-		}
-		
-		if (user.emailVerificationExpires < new Date()) {
-			return res.status(400).json({ message: 'Verification code has expired' });
-		}
-		
-		// Update user verification status
+		if (user.isEmailVerified) return res.status(400).json({ message: 'Email already verified' });
+		if (user.emailVerificationCode !== code) return res.status(400).json({ message: 'Invalid verification code' });
+		if (user.emailVerificationExpires < new Date()) return res.status(400).json({ message: 'Verification code expired' });
 		user.isEmailVerified = true;
 		user.emailVerificationCode = undefined;
 		user.emailVerificationExpires = undefined;
 		await user.save();
-		
-		// Send welcome email
-		await sendWelcomeEmail(email, user.name);
-		
-		const token = signToken(user);
-		res.json({ 
-			message: 'Email verified successfully!',
-			user: { 
-				id: user._id, 
-				name: user.name, 
-				email: user.email, 
-				role: user.role, 
-				phone: user.phone, 
-				cacUrl: user.cacUrl, 
-				hostelDocUrl: user.hostelDocUrl,
-				whatsapp: user.whatsapp,
-				telegram: user.telegram,
-				isEmailVerified: user.isEmailVerified
-			}, 
-			token 
-		});
+		res.json({ message: 'Email verified successfully!' });
 	} catch (err) {
-		console.error('Email verification error:', err);
-		res.status(500).json({ message: 'Email verification failed' });
+		console.error('Verify email error:', err);
+		res.status(500).json({ message: 'Verification failed' });
 	}
 };
 
-// Resend verification code
-exports.resendVerificationCode = async (req, res) => {
-	try {
-		const { email } = req.body;
-		if (!email) return res.status(400).json({ message: 'Email is required' });
-		
-		const user = await User.findOne({ email });
-		if (!user) return res.status(404).json({ message: 'User not found' });
-		
-		if (user.isEmailVerified) {
-			return res.status(400).json({ message: 'Email already verified' });
-		}
-		
-		// Generate new verification code
-		const verificationCode = generateVerificationCode();
-		const verificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-		
-		user.emailVerificationCode = verificationCode;
-		user.emailVerificationExpires = verificationExpires;
-		await user.save();
-		
-		// Send verification email
-		const emailSent = await sendVerificationEmail(email, verificationCode, user.name);
-		if (!emailSent) {
-			return res.status(500).json({ message: 'Failed to send verification email' });
-		}
-		
-		res.json({ message: 'Verification code sent successfully' });
-	} catch (err) {
-		console.error('Resend verification error:', err);
-		res.status(500).json({ message: 'Failed to resend verification code' });
-	}
-};
+// Email verification endpoint removed
+
+// Resend verification endpoint removed

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { addFavorite, removeFavorite } from '../lib/api'
 
-export default function PropertyCard({ id, image, title, price, location, school, area, bedrooms, ownerName, createdAt, onView, initiallyFavorited = false }) {
+export default function PropertyCard({ id, image, images, title, price, location, school, address, bedrooms, ownerName, createdAt, onView, initiallyFavorited = false }) {
   const { isAuthenticated, token } = useAuth()
   const [favorited, setFavorited] = useState(initiallyFavorited)
   const [loading, setLoading] = useState(false)
@@ -28,10 +28,32 @@ export default function PropertyCard({ id, image, title, price, location, school
 
   const posted = createdAt ? new Date(createdAt).toLocaleDateString() : ''
 
+  const resolveUrl = (url) => {
+    if (!url) return ''
+    if (url.startsWith('http')) return url
+    const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api')
+    return `${apiBase.replace('/api', '')}${url}`
+  }
+
+  const primaryImage = resolveUrl(image || (images && images[0])) || 'https://picsum.photos/seed/hostel/800/600'
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-black/10 overflow-hidden">
       <div className="relative">
-        <img src={image} alt={title} className="h-48 w-full object-cover" />
+        <img 
+          src={primaryImage} 
+          alt={title} 
+          className="h-48 w-full object-cover"
+          onError={(e) => {
+            e.target.src = 'https://picsum.photos/seed/hostel/800/600'
+          }}
+        />
+        {/* Image count indicator */}
+        {images && images.length > 1 && (
+          <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+            +{images.length - 1} more
+          </div>
+        )}
         <button disabled={loading} onClick={toggleFavorite} className={`absolute top-2 right-2 inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/90 border border-black/10 ${favorited ? 'text-black' : 'text-black/60'}`} aria-label="Save to favorites">
           <svg xmlns="http://www.w3.org/2000/svg" fill={favorited ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
@@ -40,7 +62,7 @@ export default function PropertyCard({ id, image, title, price, location, school
       </div>
       <div className="p-4 space-y-2">
         <h3 className="text-lg font-semibold text-black">{title}</h3>
-        <p className="text-sm text-black/70">{school}{area ? ` • ${area}` : ''}</p>
+        <p className="text-sm text-black/70">{school}{address ? ` • ${address}` : ''}</p>
         <p className="text-sm text-black/60">{location}</p>
         <div className="flex items-center justify-between pt-2">
           <span className="font-semibold">₦{price} / year</span>

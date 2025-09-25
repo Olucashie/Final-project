@@ -1,9 +1,9 @@
-export const API_BASE =  'https://final-project-1-zwia.onrender.com/api'
+export const API_BASE =   'http://localhost:5000/api'
 
 export function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
-
+ 
 // Hostels
 export async function listHostels(token, query={}) {
   const qs = new URLSearchParams(query).toString()
@@ -27,8 +27,34 @@ export async function getHostel(token, id) {
   return res.json()
 }
 
-export async function createHostel(data, token) {
+export async function createHostel(data, token, onProgress) {
   try {
+    if (data instanceof FormData && typeof XMLHttpRequest !== 'undefined') {
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${API_BASE}/hostels`);
+        xhr.setRequestHeader('Authorization', authHeaders(token).Authorization || '');
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable && typeof onProgress === 'function') {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            onProgress(percent);
+          }
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try { resolve(JSON.parse(xhr.responseText)); } catch { resolve({}); }
+            } else {
+              reject(new Error(`API error ${xhr.status}: ${xhr.responseText}`));
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(data);
+      });
+      return; // caller can refetch list
+    }
+    // Fallback to fetch without progress
     let options = { method: 'POST' };
     if (data instanceof FormData) {
       options.body = data;
@@ -47,6 +73,38 @@ export async function createHostel(data, token) {
     console.error('createHostel failed:', err);
     throw err;
   }
+}
+
+export async function deleteHostel(id, token) {
+  const res = await fetch(`${API_BASE}/hostels/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders(token) }
+  })
+  if (!res.ok) {
+    let msg = 'Failed to delete hostel'
+    try { const j = await res.json(); if (j?.message) msg = j.message } catch {}
+    throw new Error(msg)
+  }
+  return res.json()
+}
+
+// Admin: verify/unverify hostel
+export async function verifyHostel(id, token) {
+  const res = await fetch(`${API_BASE}/hostels/${id}/verify`, {
+    method: 'POST',
+    headers: { ...authHeaders(token) }
+  })
+  if (!res.ok) throw new Error('Failed to verify hostel')
+  return res.json()
+}
+
+export async function unverifyHostel(id, token) {
+  const res = await fetch(`${API_BASE}/hostels/${id}/unverify`, {
+    method: 'POST',
+    headers: { ...authHeaders(token) }
+  })
+  if (!res.ok) throw new Error('Failed to unverify hostel')
+  return res.json()
 }
 
 // Favorites

@@ -12,10 +12,10 @@ const userSchema = new mongoose.Schema({
 	// Contact information
 	whatsapp: { type: String, trim: true },
 	telegram: { type: String, trim: true },
-	// Verification status
-	isEmailVerified: { type: Boolean, default: false },
-	emailVerificationCode: { type: String, trim: true },
-	emailVerificationExpires: { type: Date },
+// Email verification fields
+isEmailVerified: { type: Boolean, default: false },
+emailVerificationCode: { type: String, trim: true },
+emailVerificationExpires: { type: Date },
 	isCacVerified: { type: Boolean, default: false },
 	isHostelDocVerified: { type: Boolean, default: false },
 	savedListings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Hostel' }]

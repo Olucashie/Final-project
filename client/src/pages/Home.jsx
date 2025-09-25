@@ -31,7 +31,7 @@ export default function Home() {
     const form = new FormData(e.currentTarget)
     const params = new URLSearchParams({
       school: form.get('school') || '',
-      area: form.get('area') || '',
+      address: form.get('address') || '',
       location: form.get('location') || '',
       minPrice: form.get('minPrice') || '',
       maxPrice: form.get('maxPrice') || '',
@@ -53,7 +53,7 @@ export default function Home() {
 
           <form onSubmit={handleSearch} className="mt-8 grid grid-cols-1 md:grid-cols-6 gap-3">
             <input name="school" placeholder="School (e.g., University of Lagos)" className="border border-white/20 bg-white rounded-md px-3 py-2 placeholder-black/50" />
-            <input name="area" placeholder="Area (e.g., Akoka)" className="border border-white/20 bg-white rounded-md px-3 py-2 placeholder-black/50" />
+            <input name="address" placeholder="Address (e.g., Akoka)" className="border border-white/20 bg-white rounded-md px-3 py-2 placeholder-black/50" />
             <input name="location" placeholder="Nearby landmark" className="border border-white/20 bg-white rounded-md px-3 py-2 placeholder-black/50" />
             <input name="minPrice" placeholder="Min Price" type="number" className="border border-white/20 bg-white rounded-md px-3 py-2 placeholder-black/50" />
             <input name="maxPrice" placeholder="Max Price" type="number" className="border border-white/20 bg-white rounded-md px-3 py-2 placeholder-black/50" />
@@ -87,11 +87,12 @@ export default function Home() {
                   key={p._id}
                   id={p._id}
                   image={p.images?.[0] || 'https://picsum.photos/seed/hostel/800/600'}
+                  images={p.images}
                   title={p.title}
                   price={p.price}
                   location={p.location}
                   school={p.school}
-                  area={p.area}
+                  address={p.address}
                   bedrooms={p.bedrooms}
                   ownerName={p.owner?.name}
                   createdAt={p.createdAt}

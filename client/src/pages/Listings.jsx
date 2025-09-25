@@ -45,7 +45,7 @@ export default function Listings() {
     const form = new FormData(e.currentTarget)
     const next = new URLSearchParams({
       school: form.get('school') || '',
-      area: form.get('area') || '',
+      address: form.get('address') || '',
       location: form.get('location') || '',
       minPrice: form.get('minPrice') || '',
       maxPrice: form.get('maxPrice') || '',
@@ -79,7 +79,7 @@ export default function Listings() {
             </h3>
           <form className="space-y-3" onSubmit={onFilterSubmit}>
             <input name="school" defaultValue={params.school || ''} placeholder="School" className="w-full border border-black/10 rounded-md px-3 py-2" />
-            <input name="area" defaultValue={params.area || ''} placeholder="Area" className="w-full border border-black/10 rounded-md px-3 py-2" />
+            <input name="address" defaultValue={params.address || ''} placeholder="Address" className="w-full border border-black/10 rounded-md px-3 py-2" />
             <input name="location" defaultValue={params.location || ''} placeholder="Nearby landmark" className="w-full border border-black/10 rounded-md px-3 py-2" />
             <input name="minPrice" defaultValue={params.minPrice || ''} placeholder="Min Price" type="number" className="w-full border border-black/10 rounded-md px-3 py-2" />
             <input name="maxPrice" defaultValue={params.maxPrice || ''} placeholder="Max Price" type="number" className="w-full border border-black/10 rounded-md px-3 py-2" />
@@ -127,11 +127,12 @@ export default function Listings() {
                   key={p._id}
                   id={p._id}
                   image={p.images?.[0] || 'https://picsum.photos/seed/hostel/800/600'}
+                  images={p.images}
                   title={p.title}
                   price={p.price}
                   location={p.location}
                   school={p.school}
-                  area={p.area}
+                  address={p.address || p.area}
                   bedrooms={p.bedrooms}
                   ownerName={p.owner?.name}
                   createdAt={p.createdAt}
