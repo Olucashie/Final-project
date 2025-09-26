@@ -40,7 +40,7 @@ const sendWelcomeEmail = async (email, userName) => {
       return true;
     }
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'noreply@hostelfinder.com',
+      from: process.env.EMAIL_USER || 'noreply@unihost.com',
       to: email,
       subject: 'Welcome to Hostel Finder!',
       html: `

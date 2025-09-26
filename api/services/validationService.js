@@ -16,7 +16,7 @@ const validateUrl = (url) => {
         method: 'HEAD',
         timeout: 5000,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; HostelFinder/1.0)'
+          'User-Agent': 'Mozilla/5.0 (compatible; Unihost/1.0)'
         }
       };
 
