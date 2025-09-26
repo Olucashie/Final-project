@@ -1,4 +1,4 @@
-export const API_BASE =   'http://localhost:5000/api'
+export const API_BASE =   'https://finale-projecte.onrender.com/api'
 
 export function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {}
