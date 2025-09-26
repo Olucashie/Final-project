@@ -87,21 +87,37 @@ exports.register = async (req, res) => {
 					pass: process.env.PASSWORD || process.env.EMAIL_PASS
 				}
 			});
-			await transporter.sendMail({
-				from: `"Hostel Finder" <${process.env.EMAIL || process.env.EMAIL_USER}>`,
-				to: email,
-				subject: 'Verify your email',
-				html: `<div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9;">
-				  <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
-					<h2 style="color: #333333;">Email Verification Code</h2>
-					<p style="color: #555555; font-size: 16px;">
-					  Hello ${name},<br><br>
-					  Your verification code is: <strong style="font-size: 24px;">${emailVerificationCode}</strong><br><br>
-					  This code will expire in 10 minutes.
+					await transporter.sendMail({
+					from: `"UniHost" <${process.env.EMAIL || process.env.EMAIL_USER}>`,
+						to: email,
+						subject: 'Verify your email',
+						html: `
+		<div style="background: #f4f8fb; padding: 32px 0;">
+			<div style="max-width: 480px; margin: auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #0001; padding: 32px 24px; font-family: 'Segoe UI', Arial, sans-serif;">
+				<div style="text-align: center;">
+					<img src="https://img.icons8.com/color/96/000000/verified-account.png" alt="Verify" style="width: 64px; margin-bottom: 16px;" />
+					<h2 style="color: #1a237e; margin-bottom: 8px;">Verify Your Email</h2>
+					<p style="color: #333; font-size: 16px; margin-bottom: 24px;">
+						Hi <b>${name}</b>,<br>
+						Thank you for registering with <b>UniHost</b>!<br>
+						Please use the code below to verify your email address:
 					</p>
-				  </div>
-				</div>`
-			});
+					<div style="background: #e3f2fd; color: #1565c0; font-size: 2rem; letter-spacing: 6px; font-weight: bold; border-radius: 8px; padding: 18px 0; margin-bottom: 24px;">
+						${emailVerificationCode}
+					</div>
+					<p style="color: #555; font-size: 15px; margin-bottom: 0;">
+						This code will expire in 10 minutes.<br>
+						If you did not request this, you can safely ignore this email.
+					</p>
+				</div>
+				<hr style="margin: 32px 0 16px 0; border: none; border-top: 1px solid #eee;">
+				<div style="text-align: center; color: #aaa; font-size: 13px;">
+					&copy; 2025 UniHost. All rights reserved.
+				</div>
+			</div>
+		</div>
+						`
+					});
 		}
 
 		res.status(201).json({ 
