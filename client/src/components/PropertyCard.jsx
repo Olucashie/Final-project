@@ -31,7 +31,7 @@ export default function PropertyCard({ id, image, images, title, price, location
   const resolveUrl = (url) => {
     if (!url) return ''
     if (url.startsWith('http')) return url
-    const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api')
+    const apiBase = (import.meta.env.VITE_API_URL || 'https://finale-project-8z1n.onrender.com/api')
     return `${apiBase.replace('/api', '')}${url}`
   }
 

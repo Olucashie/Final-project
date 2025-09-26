@@ -67,7 +67,7 @@ export default function AuthPage() {
     setVerifying(true);
     setError('');
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/verify-email`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://finale-project-8z1n.onrender.com/api'}/auth/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: verificationCode })

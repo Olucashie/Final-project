@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   const login = async (email, password) => {
-    const res = await fetch('http://localhost:5000/api/auth/login', {
+    const res = await fetch('https://finale-project-8z1n.onrender.com/api/auth/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password })
     })
     if (!res.ok) throw new Error('Login failed')
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
   }
 
   const register = async (name, email, password, role, phone, cacUrl, hostelDocUrl, whatsapp, telegram) => {
-    const res = await fetch('http://localhost:5000/api/auth/register', {
+    const res = await fetch('https://finale-project-8z1n.onrender.com/api/auth/register', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password, role, phone, cacUrl, hostelDocUrl, whatsapp, telegram })
     })
     if (!res.ok) {
