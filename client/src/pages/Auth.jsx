@@ -67,7 +67,7 @@ export default function AuthPage() {
     setVerifying(true);
     setError('');
     try {
-  const res = await fetch('https://finale-projecte.onrender.com/api/auth/verify-email', {
+  const res = await fetch('https://final-project-00.onrender.com/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: verificationCode })

@@ -1,4 +1,4 @@
-export const API_BASE =   'https://finale-projecte.onrender.com/api'
+export const API_BASE =   'https://final-project-00.onrender.com/api'
 
 export function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {}
