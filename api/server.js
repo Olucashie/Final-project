@@ -9,7 +9,7 @@ app.use(cors({
 }));
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = 'https://final-project-00.onrender.com';
 
 connectDB().then(() => {
 	app.listen(PORT, () => console.log(`API listening on port ${PORT}`));
