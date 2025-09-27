@@ -4,12 +4,15 @@ const app = require('./app');
 const cors = require('cors');
 
 app.use(cors({
-  origin: 'https://unihost-project.vercel.app',
+  origin: [
+    'https://unihost-project.vercel.app',
+    'http://localhost:5173'
+  ],
   credentials: true
 }));
 dotenv.config();
 
-const PORT = 'https://final-project-00.onrender.com';
+const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {
 	app.listen(PORT, () => console.log(`API listening on port ${PORT}`));
