@@ -11,7 +11,7 @@ const signToken = (user) => {
 };
 
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../services/sendgridService');
 
 exports.register = async (req, res) => {
 	try {
