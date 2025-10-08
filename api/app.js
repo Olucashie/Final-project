@@ -4,31 +4,13 @@ const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
 
-// Load env early so CORS origins can come from env
 dotenv.config();
 
 const app = express();
-
-// Configure CORS using environment variable or sensible defaults
-// Set CORS_ORIGINS to a comma-separated list in your environment (e.g. https://unihost-project.vercel.app)
-const allowedOrigins = (process.env.CORS_ORIGINS || 'https://unihost-project.vercel.app').split(',').map(s => s.trim()).filter(Boolean);
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow non-browser requests (like curl) with no origin
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS policy: Origin not allowed'));
-  },
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-// Handle preflight requests for all routes
-app.options('*', cors(corsOptions));
-
+app.use(cors({
+  origin: 'https://unihost-project.vercel.app',
+  credentials: true
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
