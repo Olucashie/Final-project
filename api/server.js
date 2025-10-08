@@ -5,8 +5,7 @@ const cors = require('cors');
 
 app.use(cors({
   origin: [
-    'https://unihost-project.vercel.app',
-    'http://localhost:5173'
+    'https://unihost-project.vercel.app'
   ],
   credentials: true
 }));
