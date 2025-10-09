@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import Modal from '../components/Modal'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -17,11 +16,8 @@ export default function AuthPage() {
   const [telegram, setTelegram] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalContent, setModalContent] = useState({ title: '', message: '', type: 'info' })
+  // Removed modal states; use simple inline feedback
+  const [success, setSuccess] = useState('')
   const navigate = useNavigate()
   const { login, register } = useAuth()
 
@@ -29,29 +25,20 @@ export default function AuthPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-  setModalContent({ title: mode === 'login' ? 'Signing In' : 'Registering', message: mode === 'login' ? 'Signing you in, please wait...' : 'Creating your account, please wait...', type: 'info' })
-    setModalOpen(true)
+    setSuccess('')
     try {
       if (mode === 'login') {
         const result = await login(email, password)
-        // Email verification removed
-        setModalContent({ title: 'Success', message: 'Login successful! Redirecting...', type: 'success' })
-        setTimeout(() => {
-          setModalOpen(false)
-          navigate('/dashboard')
-        }, 1000)
+        navigate('/dashboard')
       } else {
         await register(name, email, password, role, phone, cacUrl, hostelDocUrl, whatsapp, telegram)
         setError('')
-        if (role === 'student' || role === 'agent') {
-          setShowVerificationModal(true);
-          setModalOpen(false);
-        } else {
-          setModalContent({ title: 'Success', message: 'Registration successful! You can now log in.', type: 'success' })
-        }
+        // Email verification link is sent by backend; no modal
+        setSuccess('Registration successful. Please check your email for a verification link, then log in.')
+        setMode('login')
       }
     } catch (err) {
-      setModalContent({ title: 'Error', message: err.message || 'Something went wrong', type: 'error' })
+      setError(err.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -61,61 +48,10 @@ export default function AuthPage() {
 
   // Resend code handler removed
 
-  // Verification modal handler
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    setVerifying(true);
-    setError('');
-    try {
-  const res = await fetch('https://final-project-00.onrender.com/api/auth/verify-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: verificationCode })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setShowVerificationModal(false);
-      setModalContent({ title: 'Success', message: 'Email verified! You can now log in.', type: 'success' });
-      setModalOpen(true);
-      setTimeout(() => {
-        setModalOpen(false);
-        setMode('login');
-      }, 1500);
-    } catch (err) {
-      setError(err.message || 'Verification failed');
-    } finally {
-      setVerifying(false);
-    }
-  };
+  // Email verification handled via link; modal removed
 
   return (
     <>
-      <Modal open={modalOpen} title={modalContent.title} type={modalContent.type} onClose={() => setModalOpen(false)}>
-        <div className="text-center">
-          <p>{modalContent.message}</p>
-        </div>
-      </Modal>
-  <Modal open={showVerificationModal} title="Verify Your Email" type="info" onClose={() => setShowVerificationModal(false)}>
-        <form onSubmit={handleVerify} className="space-y-4">
-          <p className="text-gray-700">A verification code has been sent to <strong>{email}</strong>. Enter it below to verify your account.</p>
-          <input
-            value={verificationCode}
-            onChange={e => setVerificationCode(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-center text-2xl tracking-widest font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            placeholder="000000"
-            maxLength={6}
-            required
-          />
-          {error && <p className="text-red-600 text-sm text-center">{error}</p>}
-          <button
-            type="submit"
-            disabled={verifying}
-            className="w-full inline-flex justify-center items-center rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 text-white font-medium hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            {verifying ? 'Verifying...' : 'Verify Email'}
-          </button>
-        </form>
-      </Modal>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
@@ -144,6 +80,11 @@ export default function AuthPage() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <p className="text-green-700 text-sm">{success}</p>
             </div>
           )}
           

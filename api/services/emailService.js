@@ -14,7 +14,7 @@ const sendWelcomeEmail = async (email, userName) => {
   `;
   try {
     const res = await sendEmail(email, subject, html, process.env.SENDGRID_FROM);
-    console.log(`✅ Welcome email queued for ${email}`, res?.info || res);
+    console.log(`Welcome email queued for ${email}`, res?.info || res);
     return true;
   } catch (err) {
     console.error('Error sending welcome email via SendGrid:', err);
