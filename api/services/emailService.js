@@ -23,7 +23,8 @@ const sendWelcomeEmail = async (email, userName) => {
 };
 
 const sendVerificationEmail = async (email, token, userName) => {
-  const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
+  const apiBase = process.env.API_URL || process.env.SERVER_URL || '';
+  const verificationUrl = `${apiBase}/api/auth/verify-email/${token}`;
   const subject = 'Verify Your Email - UniHost';
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -47,7 +48,7 @@ const sendVerificationEmail = async (email, token, userName) => {
   `;
 
   try {
-    const res = await sendEmail(email, subject, html, process.env.SENDGRAND_FROM);
+    const res = await sendEmail(email, subject, html, process.env.SENDGRID_FROM);
     console.log(`✅ Verification email sent to ${email}`);
     return true;
   } catch (error) {
