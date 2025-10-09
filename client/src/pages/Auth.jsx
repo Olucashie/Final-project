@@ -33,8 +33,8 @@ export default function AuthPage() {
       } else {
         await register(name, email, password, role, phone, cacUrl, hostelDocUrl, whatsapp, telegram)
         setError('')
-        // Email verification link is sent by backend; no modal
-        setSuccess('Registration successful. Please check your email for a verification link, then log in.')
+        // Email verification disabled
+        setSuccess('Registration successful. You can now log in.')
         setMode('login')
       }
     } catch (err) {
