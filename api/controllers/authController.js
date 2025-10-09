@@ -31,23 +31,13 @@ exports.register = async (req, res) => {
 			if (existingAdmin) return res.status(403).json({ message: 'Admin already exists' });
 		}
 
-		// For student/agent, generate verification token (6-digit) and 5-minute expiry
-		let emailVerificationToken, emailVerificationExpires, isEmailVerified = false;
-		if (desiredRole === 'student' || desiredRole === 'agent') {
-			emailVerificationToken = String(crypto.randomInt(100000, 999999)); // 6-digit numeric token
-			emailVerificationExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-		} else {
-			isEmailVerified = true;
-		}
-
+		// No email verification: mark users as verified immediately
 		const payload = { 
 			name, 
 			email, 
 			password, 
 			role: desiredRole,
-			isEmailVerified,
-			emailVerificationToken,
-			emailVerificationExpires
+			isEmailVerified: true
 		};
 
 		if (payload.role === 'agent') {
@@ -77,19 +67,11 @@ exports.register = async (req, res) => {
 
 		const user = await User.create(payload);
 
-		// Send only token email based on role (no link)
-		if (desiredRole === 'student' || desiredRole === 'agent') {
-			try {
-				await sendToken(user.email, emailVerificationToken);
-			} catch (error) {
-				console.error('Error sending verification token:', error);
-			}
-		} else {
-			try {
-				await sendWelcomeEmail(user.email, user.name);
-			} catch (error) {
-				console.error('Error sending welcome email:', error);
-			}
+		// Send welcome email (non-fatal) if configured
+		try {
+			await sendWelcomeEmail(user.email, user.name);
+		} catch (error) {
+			console.error('Error sending welcome email:', error);
 		}
 
 		// Registration success response
@@ -153,79 +135,4 @@ exports.login = async (req, res) => {
   }
 };
 
-// Verify email endpoint supports both GET /verify-email/:token and POST /verify-email { email, token }
-exports.verifyEmail = async (req, res) => {
-  try {
-    let token = req.params?.token;
-    let email = undefined;
-
-    // If POST body is provided, use email + token from body
-    if (!token && req.body && req.method === 'POST') {
-      token = req.body.token;
-      email = req.body.email;
-      if (!email || !token) return res.status(400).json({ message: 'Email and token are required' });
-    }
-
-    if (!token) return res.status(400).json({ message: 'Verification token is required' });
-
-    const query = email
-      ? { email, emailVerificationToken: token, emailVerificationExpires: { $gt: Date.now() } }
-      : { emailVerificationToken: token, emailVerificationExpires: { $gt: Date.now() } };
-
-    const user = await User.findOne(query);
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired verification token' });
-    }
-    if (user.isEmailVerified) {
-      return res.status(400).json({ success: false, message: 'Email already verified' });
-    }
-
-		user.isEmailVerified = true;
-		user.emailVerificationToken = undefined;
-		user.emailVerificationExpires = undefined;
-		await user.save();
-
-		// Send a welcome email on successful verification (non-fatal)
-		try {
-			await sendWelcomeEmail(user.email, user.name);
-		} catch (e) {
-			console.error('Error sending welcome email after verification:', e);
-		}
-
-    // If this was GET (link), redirect; if POST (token), return JSON
-    if (req.method === 'GET') {
-      return res.redirect(`${process.env.CLIENT_URL}/login?verified=true`);
-    }
-    return res.json({ message: 'Email verified successfully' });
-  } catch (err) {
-    console.error('Verify email error:', err);
-    return res.status(500).json({ success: false, message: 'Email verification failed. Please try again.' });
-  }
-};
-
-// Resend verification token
-exports.resendVerification = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: 'Email is required' });
-
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.isEmailVerified) {
-      return res.status(400).json({ message: 'Email is already verified' });
-    }
-
-	// Generate new verification token (6-digit) and 5-minute expiry
-	const emailVerificationToken = String(crypto.randomInt(100000, 999999));
-	user.emailVerificationToken = emailVerificationToken;
-	user.emailVerificationExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-    await user.save();
-
-    // Send token only
-    await sendToken(user.email, emailVerificationToken);
-    return res.json({ message: 'Verification token resent successfully' });
-  } catch (err) {
-    console.error('Resend verification error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to resend verification token' });
-  }
-};
+// Email verification removed - functions intentionally omitted
