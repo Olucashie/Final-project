@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
 	telegram: { type: String, trim: true },
 // Email verification fields
 isEmailVerified: { type: Boolean, default: false },
-emailVerificationCode: { type: String, trim: true },
+emailVerificationToken: { type: String, trim: true },
 emailVerificationExpires: { type: Date },
 	isCacVerified: { type: Boolean, default: false },
 	isHostelDocVerified: { type: Boolean, default: false },

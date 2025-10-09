@@ -30,7 +30,7 @@ app.use(cors({
 // Parse JSON before your routes
 app.use(require('express').json());
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 'https://final-project-00.onrender.com';
 
 // ✅ Start after DB connects
 connectDB().then(() => {

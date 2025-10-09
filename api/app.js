@@ -8,29 +8,26 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Define all allowed origins
-const allowedOrigins = [
+// ✅ CORS setup (safe)
+// Read allowed origins from env CORS_ORIGINS (comma-separated) or use defaults.
+const defaultOrigins = [
   'https://unihost-project.vercel.app',
-  'http://localhost:5173', // for local frontend testing
+  'http://localhost:5173',
 ];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+  : defaultOrigins;
 
-// ✅ CORS setup
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow no-origin requests (like curl or Postman)
+    // Allow requests with no origin (curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      console.warn('❌ Blocked by CORS:', origin);
-      return callback(new Error('Not allowed by CORS'));
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.warn('Blocked by CORS:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));
-
-// ✅ Handle preflight (OPTIONS) requests
-app.options('*', cors());
 
 app.use(express.json());
 app.use(morgan('dev'));
