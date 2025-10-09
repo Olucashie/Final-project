@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { sendVerificationEmail, sendWelcomeEmail } = require('../services/emailService');
+const { sendToken } = require('../utils/sendVerificationEmail');
 const { validateCacUrl, validateHostelDocUrl, validatePhoneNumber, validateWhatsAppNumber, validateTelegramUsername } = require('../services/validationService');
 
 const signToken = (user) => {
@@ -80,6 +81,8 @@ exports.register = async (req, res) => {
 		if (desiredRole === 'student' || desiredRole === 'agent') {
 			try {
 				await sendVerificationEmail(user.email, emailVerificationToken, user.name);
+				// Also send a simple token email via SendGrid as requested
+				await sendToken(user.email, emailVerificationToken);
 			} catch (error) {
 				console.error('Error sending verification email:', error);
 			}
@@ -223,6 +226,7 @@ exports.resendVerification = async (req, res) => {
 		// Send verification email
 		try {
 			await sendVerificationEmail(user.email, emailVerificationToken, user.name);
+			await sendToken(user.email, emailVerificationToken);
 			res.json({ message: 'Verification email resent successfully' });
 		} catch (error) {
 			console.error('Error sending verification email:', error);
