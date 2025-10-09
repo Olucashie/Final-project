@@ -12,6 +12,7 @@ const signToken = (user) => {
 };
 
 
+exports.register = async (req, res) => {
 	try {
 		const { name, email, password, role, phone, cacUrl, hostelDocUrl, whatsapp, telegram } = req.body;
 		if (!name || !email || !password) return res.status(400).json({ message: 'Missing fields' });
@@ -75,101 +76,82 @@ const signToken = (user) => {
 
 		const user = await User.create(payload);
 
-		// Send verification email for student/agent
+		// Send verification or welcome email based on role
 		if (desiredRole === 'student' || desiredRole === 'agent') {
-			// Use nodemailer directly for now
-			const transporter = nodemailer.createTransport({
-				service: 'gmail',
-				auth: {
-					user: process.env.EMAIL || process.env.EMAIL_USER,
-					pass: process.env.PASSWORD || process.env.EMAIL_PASS
-				}
-			});
-					await transporter.sendMail({
-					from: `"UniHost" <${process.env.EMAIL || process.env.EMAIL_USER}>`,
-						to: email,
-						subject: 'Verify your email',
-						html: `
-		<div style="background: #f4f8fb; padding: 32px 0;">
-			<div style="max-width: 480px; margin: auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #0001; padding: 32px 24px; font-family: 'Segoe UI', Arial, sans-serif;">
-				<div style="text-align: center;">
-					<img src="https://img.icons8.com/color/96/000000/verified-account.png" alt="Verify" style="width: 64px; margin-bottom: 16px;" />
-					<h2 style="color: #1a237e; margin-bottom: 8px;">Verify Your Email</h2>
-					<p style="color: #333; font-size: 16px; margin-bottom: 24px;">
-						Hi <b>${name}</b>,<br>
-						Thank you for registering with <b>UniHost</b>!<br>
-						Please use the code below to verify your email address:
-					</p>
-					<div style="background: #e3f2fd; color: #1565c0; font-size: 2rem; letter-spacing: 6px; font-weight: bold; border-radius: 8px; padding: 18px 0; margin-bottom: 24px;">
-						${emailVerificationCode}
-					</div>
-					<p style="color: #555; font-size: 15px; margin-bottom: 0;">
-						This code will expire in 10 minutes.<br>
-						If you did not request this, you can safely ignore this email.
-					</p>
-				</div>
-				<hr style="margin: 32px 0 16px 0; border: none; border-top: 1px solid #eee;">
-				<div style="text-align: center; color: #aaa; font-size: 13px;">
-					&copy; 2025 UniHost. All rights reserved.
-				</div>
-			</div>
-		</div>
-						`
-					});
+			try {
+				await sendVerificationEmail(user.email, emailVerificationToken, user.name);
+			} catch (error) {
+				console.error('Error sending verification email:', error);
+			}
+		} else {
+			try {
+				await sendWelcomeEmail(user.email, user.name);
+			} catch (error) {
+				console.error('Error sending welcome email:', error);
+			}
 		}
 
-		res.status(201).json({ 
-			message: desiredRole === 'admin' ? 'Registration successful.' : 'Registration successful. Please check your email for verification code.',
-			user: { 
-				id: user._id, 
-				name: user.name, 
-				email: user.email, 
-				role: user.role, 
-				phone: user.phone, 
-				cacUrl: user.cacUrl, 
+		// Registration success response
+		return res.status(201).json({
+			message: desiredRole === 'admin' ? 'Registration successful.' : 'Registration successful. Please check your email for verification link.',
+			user: {
+				id: user._id,
+				name: user.name,
+				email: user.email,
+				role: user.role,
+				phone: user.phone,
+				cacUrl: user.cacUrl,
 				hostelDocUrl: user.hostelDocUrl,
+				whatsapp: user.whatsapp,
+				telegram: user.telegram,
 				isEmailVerified: user.isEmailVerified
 			}
 		});
 	} catch (err) {
 		console.error('Registration error:', err);
-		res.status(500).json({ message: 'Registration failed' });
-	}
-exports.login = async (req, res) => {
-	try {
-		const { email, password } = req.body;
-		if (!email || !password) return res.status(400).json({ message: 'Missing fields' });
-		const user = await User.findOne({ email });
-		if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-		const matched = await user.comparePassword(password);
-		if (!matched) return res.status(401).json({ message: 'Invalid credentials' });
-
-		// Prevent login for student/agent unless verified
-		if ((user.role === 'student' || user.role === 'agent') && !user.isEmailVerified) {
-			return res.status(401).json({ message: 'Please verify your email before logging in.', needsVerification: true });
-		}
-
-		const token = signToken(user);
-		res.json({ 
-			user: { 
-				id: user._id, 
-				name: user.name, 
-				email: user.email, 
-				role: user.role, 
-				phone: user.phone, 
-				cacUrl: user.cacUrl, 
-				hostelDocUrl: user.hostelDocUrl,
-				whatsapp: user.whatsapp,
-				telegram: user.telegram,
-				isEmailVerified: user.isEmailVerified
-			}, 
-			token 
-		});
-	} catch (err) {
-		console.error('Login error:', err);
-		res.status(500).json({ message: 'Login failed' });
+		return res.status(500).json({ message: 'Registration failed' });
 	}
 };
+
+// Login
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: 'Missing fields' });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const matched = await user.comparePassword(password);
+    if (!matched) return res.status(401).json({ message: 'Invalid credentials' });
+
+    // Prevent login for student/agent unless verified
+    if ((user.role === 'student' || user.role === 'agent') && !user.isEmailVerified) {
+      return res.status(401).json({ message: 'Please verify your email before logging in.', needsVerification: true });
+    }
+
+    const token = signToken(user);
+    return res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        cacUrl: user.cacUrl,
+        hostelDocUrl: user.hostelDocUrl,
+        whatsapp: user.whatsapp,
+        telegram: user.telegram,
+        isEmailVerified: user.isEmailVerified
+      },
+      token
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ message: 'Login failed' });
+  }
+};
+
 // Verify email endpoint using token from URL
 exports.verifyEmail = async (req, res) => {
 	try {
@@ -255,3 +237,4 @@ exports.resendVerification = async (req, res) => {
 		});
 	}
 };
+
