@@ -31,11 +31,11 @@ exports.register = async (req, res) => {
 			if (existingAdmin) return res.status(403).json({ message: 'Admin already exists' });
 		}
 
-		// For student/agent, generate verification token
+		// For student/agent, generate verification token (6-digit) and 5-minute expiry
 		let emailVerificationToken, emailVerificationExpires, isEmailVerified = false;
 		if (desiredRole === 'student' || desiredRole === 'agent') {
-			emailVerificationToken = crypto.randomBytes(32).toString('hex');
-			emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+			emailVerificationToken = String(crypto.randomInt(100000, 999999)); // 6-digit numeric token
+			emailVerificationExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 		} else {
 			isEmailVerified = true;
 		}
@@ -180,12 +180,17 @@ exports.verifyEmail = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already verified' });
     }
 
-    user.isEmailVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
-    await user.save();
+		user.isEmailVerified = true;
+		user.emailVerificationToken = undefined;
+		user.emailVerificationExpires = undefined;
+		await user.save();
 
-    try { await sendToken(user.email, token); } catch (e) { console.error('Error sending verification token:', e); }
+		// Send a welcome email on successful verification (non-fatal)
+		try {
+			await sendWelcomeEmail(user.email, user.name);
+		} catch (e) {
+			console.error('Error sending welcome email after verification:', e);
+		}
 
     // If this was GET (link), redirect; if POST (token), return JSON
     if (req.method === 'GET') {
@@ -210,10 +215,10 @@ exports.resendVerification = async (req, res) => {
       return res.status(400).json({ message: 'Email is already verified' });
     }
 
-    // Generate new verification token
-    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-    user.emailVerificationToken = emailVerificationToken;
-    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+	// Generate new verification token (6-digit) and 5-minute expiry
+	const emailVerificationToken = String(crypto.randomInt(100000, 999999));
+	user.emailVerificationToken = emailVerificationToken;
+	user.emailVerificationExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
     await user.save();
 
     // Send token only
