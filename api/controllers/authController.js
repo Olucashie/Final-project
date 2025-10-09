@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const User = require('../models/User');
-const { sendVerificationEmail, sendWelcomeEmail } = require('../services/emailService');
+const { sendWelcomeEmail } = require('../services/emailService');
 const { sendToken } = require('../utils/sendVerificationEmail');
 const { validateCacUrl, validateHostelDocUrl, validatePhoneNumber, validateWhatsAppNumber, validateTelegramUsername } = require('../services/validationService');
 
@@ -77,14 +77,12 @@ exports.register = async (req, res) => {
 
 		const user = await User.create(payload);
 
-		// Send verification or welcome email based on role
+		// Send only token email based on role (no link)
 		if (desiredRole === 'student' || desiredRole === 'agent') {
 			try {
-				await sendVerificationEmail(user.email, emailVerificationToken, user.name);
-				// Also send a simple token email via SendGrid as requested
 				await sendToken(user.email, emailVerificationToken);
 			} catch (error) {
-				console.error('Error sending verification email:', error);
+				console.error('Error sending verification token:', error);
 			}
 		} else {
 			try {
@@ -96,7 +94,7 @@ exports.register = async (req, res) => {
 
 		// Registration success response
 		return res.status(201).json({
-			message: desiredRole === 'admin' ? 'Registration successful.' : 'Registration successful. Please check your email for verification link.',
+			message: desiredRole === 'admin' ? 'Registration successful.' : 'Registration successful. Please check your email for the verification token.',
 			user: {
 				id: user._id,
 				name: user.name,
@@ -155,90 +153,74 @@ exports.login = async (req, res) => {
   }
 };
 
-// Verify email endpoint using token from URL
+// Verify email endpoint supports both GET /verify-email/:token and POST /verify-email { email, token }
 exports.verifyEmail = async (req, res) => {
-	try {
-		const { token } = req.params;
-		if (!token) return res.status(400).json({ message: 'Verification token is required' });
-		
-		const user = await User.findOne({
-			emailVerificationToken: token,
-			emailVerificationExpires: { $gt: Date.now() }
-		});
+  try {
+    let token = req.params?.token;
+    let email = undefined;
 
-		if (!user) {
-			return res.status(400).json({ 
-				success: false, 
-				message: 'Invalid or expired verification token' 
-			});
-		}
+    // If POST body is provided, use email + token from body
+    if (!token && req.body && req.method === 'POST') {
+      token = req.body.token;
+      email = req.body.email;
+      if (!email || !token) return res.status(400).json({ message: 'Email and token are required' });
+    }
 
-		if (user.isEmailVerified) {
-			return res.status(400).json({ 
-				success: false, 
-				message: 'Email already verified' 
-			});
-		}
+    if (!token) return res.status(400).json({ message: 'Verification token is required' });
 
-		// Mark user as verified
-		user.isEmailVerified = true;
-		user.emailVerificationToken = undefined;
-		user.emailVerificationExpires = undefined;
-		await user.save();
+    const query = email
+      ? { email, emailVerificationToken: token, emailVerificationExpires: { $gt: Date.now() } }
+      : { emailVerificationToken: token, emailVerificationExpires: { $gt: Date.now() } };
 
-		// Send welcome email after successful verification
-		try {
-			await sendWelcomeEmail(user.email, user.name);
-		} catch (error) {
-			console.error('Error sending welcome email:', error);
-		}
+    const user = await User.findOne(query);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification token' });
+    }
+    if (user.isEmailVerified) {
+      return res.status(400).json({ success: false, message: 'Email already verified' });
+    }
 
-		// Redirect to login page with success message
-		res.redirect(`${process.env.CLIENT_URL}/login?verified=true`);
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
 
-	} catch (err) {
-		console.error('Verify email error:', err);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Email verification failed. Please try again.' 
-		});
-	}
+    try { await sendToken(user.email, token); } catch (e) { console.error('Error sending verification token:', e); }
+
+    // If this was GET (link), redirect; if POST (token), return JSON
+    if (req.method === 'GET') {
+      return res.redirect(`${process.env.CLIENT_URL}/login?verified=true`);
+    }
+    return res.json({ message: 'Email verified successfully' });
+  } catch (err) {
+    console.error('Verify email error:', err);
+    return res.status(500).json({ success: false, message: 'Email verification failed. Please try again.' });
+  }
 };
 
-// Resend verification email
+// Resend verification token
 exports.resendVerification = async (req, res) => {
-	try {
-		const { email } = req.body;
-		if (!email) return res.status(400).json({ message: 'Email is required' });
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
 
-		const user = await User.findOne({ email });
-		if (!user) return res.status(404).json({ message: 'User not found' });
-		if (user.isEmailVerified) {
-			return res.status(400).json({ message: 'Email is already verified' });
-		}
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: 'Email is already verified' });
+    }
 
-		// Generate new verification token
-		const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-		user.emailVerificationToken = emailVerificationToken;
-		user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-		await user.save();
+    // Generate new verification token
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    user.emailVerificationToken = emailVerificationToken;
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await user.save();
 
-		// Send verification email
-		try {
-			await sendVerificationEmail(user.email, emailVerificationToken, user.name);
-			await sendToken(user.email, emailVerificationToken);
-			res.json({ message: 'Verification email resent successfully' });
-		} catch (error) {
-			console.error('Error sending verification email:', error);
-			throw new Error('Failed to send verification email');
-		}
-
-	} catch (err) {
-		console.error('Resend verification error:', err);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to resend verification email' 
-		});
-	}
+    // Send token only
+    await sendToken(user.email, emailVerificationToken);
+    return res.json({ message: 'Verification token resent successfully' });
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to resend verification token' });
+  }
 };
-
