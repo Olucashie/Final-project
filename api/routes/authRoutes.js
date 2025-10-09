@@ -11,6 +11,8 @@ const {
 router.post('/register', register);
 router.post('/login', login);
 
-// Email verification removed: users are verified on registration
+// Email verification routes
+router.post('/verify', verifyEmail);
+router.post('/resend-verification', resendVerification);
 
 module.exports = router;

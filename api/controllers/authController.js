@@ -31,13 +31,13 @@ exports.register = async (req, res) => {
 			if (existingAdmin) return res.status(403).json({ message: 'Admin already exists' });
 		}
 
-		// No email verification: mark users as verified immediately
+		// Prepare payload. By default users are not verified; admin registration remains immediate verified.
 		const payload = { 
 			name, 
 			email, 
 			password, 
 			role: desiredRole,
-			isEmailVerified: true
+			isEmailVerified: desiredRole === 'admin' ? true : false
 		};
 
 		if (payload.role === 'agent') {
@@ -66,6 +66,29 @@ exports.register = async (req, res) => {
 		}
 
 		const user = await User.create(payload);
+
+		// If not admin, generate a verification token and send it via email
+		if (user.role !== 'admin') {
+			try {
+				// create a random token, store its hash and expiry
+				const verificationToken = crypto.randomBytes(20).toString('hex');
+				const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+				const expires = Date.now() + (5 * 60 * 1000); // 5 minutes
+
+				user.emailVerificationToken = tokenHash;
+				user.emailVerificationExpires = new Date(expires);
+				await user.save();
+
+				// send plain token to user's email (non-fatal)
+				try {
+					await sendToken(user.email, verificationToken);
+				} catch (err) {
+					console.error('Error sending verification token:', err);
+				}
+			} catch (err) {
+				console.error('Error generating verification token:', err);
+			}
+		}
 
 		// Send welcome email (non-fatal) if configured
 		try {
@@ -136,3 +159,65 @@ exports.login = async (req, res) => {
 };
 
 // Email verification removed - functions intentionally omitted
+// Verify email using token
+exports.verifyEmail = async (req, res) => {
+	try {
+		const { token, email } = req.body;
+		if (!token || !email) return res.status(400).json({ message: 'Missing token or email' });
+
+		const user = await User.findOne({ email });
+		if (!user) return res.status(400).json({ message: 'Invalid email or token' });
+
+		if (user.isEmailVerified) return res.status(200).json({ message: 'Email already verified' });
+
+		if (!user.emailVerificationToken || !user.emailVerificationExpires) return res.status(400).json({ message: 'No verification token found; please request a new one' });
+
+		if (user.emailVerificationExpires.getTime() < Date.now()) return res.status(400).json({ message: 'Verification token expired' });
+
+		const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+		if (tokenHash !== user.emailVerificationToken) return res.status(400).json({ message: 'Invalid verification token' });
+
+		user.isEmailVerified = true;
+		user.emailVerificationToken = undefined;
+		user.emailVerificationExpires = undefined;
+		await user.save();
+
+		return res.json({ message: 'Email verified successfully' });
+	} catch (err) {
+		console.error('verifyEmail error:', err);
+		return res.status(500).json({ message: 'Verification failed' });
+	}
+};
+
+// Resend verification token
+exports.resendVerification = async (req, res) => {
+	try {
+		const { email } = req.body;
+		if (!email) return res.status(400).json({ message: 'Missing email' });
+
+		const user = await User.findOne({ email });
+		if (!user) return res.status(400).json({ message: 'User not found' });
+
+		if (user.isEmailVerified) return res.status(400).json({ message: 'Email already verified' });
+
+		// generate new token
+		const verificationToken = crypto.randomBytes(20).toString('hex');
+		const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+		const expires = Date.now() + (5 * 60 * 1000); // 5 minutes
+
+		user.emailVerificationToken = tokenHash;
+		user.emailVerificationExpires = new Date(expires);
+		await user.save();
+
+		try {
+			await sendToken(user.email, verificationToken);
+		} catch (err) {
+			console.error('Error sending verification token:', err);
+		}
+
+		return res.json({ message: 'Verification token sent' });
+	} catch (err) {
+		console.error('resendVerification error:', err);
+		return res.status(500).json({ message: 'Could not resend verification' });
+	}
+};
